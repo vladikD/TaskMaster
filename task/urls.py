@@ -12,4 +12,5 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', ObtainTokenView.as_view(), name='login'),
+    path('auth/', include('social_django.urls', namespace='social')),
 ]
