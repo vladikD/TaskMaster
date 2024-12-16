@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Task, Label, Project, Comment
+from .premissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, TokenObtainPairSerializer
 from django.contrib.auth.models import User
 
@@ -34,6 +35,11 @@ class ObtainTokenView(APIView):
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
+    permission_classes = [IsMemberOfProject]
+
+
+    def perform_create(self, serializer):
+        serializer.save(assigned_to=self.request.user)
 
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):

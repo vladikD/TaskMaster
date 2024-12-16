@@ -14,6 +14,7 @@ class Task(models.Model):
     is_complete = models.BooleanField(default=False)
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     labels = models.ManyToManyField('Label', related_name='tasks', blank=True)
+    project = models.ForeignKey('Project', related_name='tasks', on_delete=models.CASCADE)
 
     class Meta:
         indexes = [
