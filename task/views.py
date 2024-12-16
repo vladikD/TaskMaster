@@ -9,6 +9,10 @@ from .models import Task, Label, Project, Comment
 from .premissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, TokenObtainPairSerializer
 from django.contrib.auth.models import User
+from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
+from rest_framework import filters
+
 
 # Creating a register view
 class RegisterView(APIView):
@@ -31,15 +35,31 @@ class ObtainTokenView(APIView):
             return Response(serializer.validated_data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# Filter for TASK
+class TaskFilter(django_filters.FilterSet):
+    is_complete = django_filters.BooleanFilter(field_name='is_complete')
+    due_date = django_filters.DateFilter(field_name='due_date', lookup_expr='exact')
+    assigned_to = django_filters.NumberFilter(field_name='assigned_to')
+    labels = django_filters.CharFilter(field_name='labels__name', lookup_expr='icontains')
+
+    class Meta:
+        model = Task
+        fields = ['is_complete', 'due_date', 'assigned_to', 'labels']
+
 # ViewSets for Task
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [IsMemberOfProject]
-
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = TaskFilter
+    ordering_fields = ['due_date', 'created_at']
+    ordering = ['created_at']
 
     def perform_create(self, serializer):
         serializer.save(assigned_to=self.request.user)
+
 
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
