@@ -1,12 +1,13 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Task, Label, Project, Comment
-from .premissions import IsMemberOfProject
+from .permissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, TokenObtainPairSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
@@ -57,21 +58,52 @@ class TaskViewSet(viewsets.ModelViewSet):
     ordering_fields = ['due_date', 'created_at']
     ordering = ['created_at']
 
+    def get_queryset(self):
+        user = self.request.user
+        return Task.objects.filter(project__users=user)
+
     def perform_create(self, serializer):
-        serializer.save(assigned_to=self.request.user)
+        project = serializer.validated_data.get('project')
+        user = self.request.user
+        if not project.users.filter(id=user.id).exists():
+            raise PermissionDenied("У вас немає доступу до цього проєктую.")
 
-
+        serializer.save()
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
     queryset = Label.objects.all()
     serializer_class = LabelSerializer
+    permission_classes = [IsMemberOfProject]
+
+    def get_queryset(self):
+        return Label.objects.filter(tasks__project__users=self.request.user).distinct()
 
 # ViewSets for Project
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
+    permission_classes = [IsMemberOfProject]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Project.objects.filter(users=user)
+
+    def perform_create(self, serializer):
+        project = serializer.save()
+        user = self.request.user
+        project.users.add(user)
 
 # ViewSets for Comment
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+    permission_classes = [IsMemberOfProject]
+
+    def get_queryset(self):
+        return Comment.objects.filter(task__project__users=self.request.user)
+
+    def perform_create(self, serializer):
+        task = serializer.validated_data.get('task')
+        if not task.project.users.filter(id=self.request.user.id).exists():
+            raise PermissionDenied("Ви не маєте доступу до завдань цього проєкту.")
+        serializer.save()

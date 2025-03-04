@@ -45,7 +45,7 @@ class LabelSerializer(serializers.ModelSerializer):
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = '__all__'
+        fields = ['id', 'name', 'description', 'users']
 
 # Serializer for Comments
 class CommentSerializer(serializers.ModelSerializer):
