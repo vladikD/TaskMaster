@@ -43,10 +43,11 @@ class TaskFilter(django_filters.FilterSet):
     due_date = django_filters.DateFilter(field_name='due_date', lookup_expr='exact')
     assigned_to = django_filters.NumberFilter(field_name='assigned_to')
     labels = django_filters.CharFilter(field_name='labels__name', lookup_expr='icontains')
+    project = django_filters.NumberFilter(field_name='project', lookup_expr='exact')
 
     class Meta:
         model = Task
-        fields = ['is_complete', 'due_date', 'assigned_to', 'labels']
+        fields = ['is_complete', 'due_date', 'assigned_to', 'labels', 'project']
 
 # ViewSets for Task
 class TaskViewSet(viewsets.ModelViewSet):
