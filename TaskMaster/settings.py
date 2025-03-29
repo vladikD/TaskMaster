@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'social_django',
     'django_filters',
     'corsheaders',
+    'channels',
+
 ]
 
 MIDDLEWARE = [
@@ -180,4 +182,14 @@ SIMPLE_JWT = {
 
 }
 
+ASGI_APPLICATION = 'TaskMaster.asgi.application'
 
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
