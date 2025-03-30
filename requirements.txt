@@ -20,14 +20,17 @@ django-cors-headers==4.7.0
 django-filter==24.3
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
+drf-yasg==1.21.10
 h11==0.14.0
 hiredis==3.1.0
 httptools==0.6.4
 hyperlink==21.0.0
 idna==3.10
 incremental==24.7.2
+inflection==0.5.1
 msgpack==1.1.0
 oauthlib==3.2.2
+packaging==24.2
 psycopg2-binary==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
@@ -37,6 +40,7 @@ pyOpenSSL==25.0.0
 python-decouple==3.8
 python-dotenv==1.1.0
 python3-openid==3.2.0
+pytz==2025.2
 PyYAML==6.0.2
 redis==5.2.1
 requests==2.32.3
@@ -50,6 +54,7 @@ sqlparse==0.5.3
 Twisted==24.11.0
 txaio==23.1.1
 typing_extensions==4.13.0
+uritemplate==4.1.1
 urllib3==2.2.3
 uvicorn==0.34.0
 uvloop==0.21.0

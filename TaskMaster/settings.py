@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     'channels',
+    'drf_yasg',
 
 ]
 
@@ -160,6 +161,18 @@ AUTHENTICATION_BACKENDS = (
 
 SOCIAL_AUTH_POSTGRES_JSONFIELD = True
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = False
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer <your_token>'"
+        }
+    },
+}
+
 
 
 
