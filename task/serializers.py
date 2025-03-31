@@ -1,8 +1,15 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import Task, Label, Project, Comment
+from .models import Task, Label, Project, Comment, Column
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+
+
+class ColumnSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Column
+        fields = ['id', 'name', 'project', 'order']
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,7 +40,8 @@ class TokenObtainPairSerializer(serializers.Serializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = '__all__'
+        fields = ['id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
+                  'assigned_to', 'labels', 'project', 'column']
 
 # Serializer for Labels
 class LabelSerializer(serializers.ModelSerializer):

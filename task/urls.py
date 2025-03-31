@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import TaskViewSet, LabelViewSet, ProjectViewSet, CommentViewSet, RegisterView, ObtainTokenView
+from .views import TaskViewSet, LabelViewSet, ProjectViewSet, CommentViewSet, RegisterView, ObtainTokenView, ColumnViewSet
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -12,6 +12,7 @@ router.register(r'tasks', TaskViewSet)
 router.register(r'labels', LabelViewSet)
 router.register(r'projects', ProjectViewSet)
 router.register(r'comments', CommentViewSet)
+router.register(r'columns', ColumnViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),

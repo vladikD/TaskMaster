@@ -4,11 +4,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Task, Label, Project, Comment
+from .models import Task, Label, Project, Comment, Column
 from .permissions import IsMemberOfProject
-from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, TokenObtainPairSerializer
+from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, \
+    TokenObtainPairSerializer, ColumnSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
@@ -108,3 +109,16 @@ class CommentViewSet(viewsets.ModelViewSet):
         if not task.project.users.filter(id=self.request.user.id).exists():
             raise PermissionDenied("Ви не маєте доступу до завдань цього проєкту.")
         serializer.save()
+
+
+class ColumnViewSet(viewsets.ModelViewSet):
+    queryset = Column.objects.all()
+    serializer_class = ColumnSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Приклад: фільтрувати колонки для певного проєкту, якщо передається параметр
+        project_id = self.request.query_params.get('project')
+        if project_id:
+            return Column.objects.filter(project_id=project_id).order_by('order')
+        return super().get_queryset()
