@@ -62,15 +62,22 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Task.objects.filter(project__users=user)
+        queryset = Task.objects.filter(project__users=user)
+        project_id = self.request.query_params.get('project')
+        column_id = self.request.query_params.get('column')
+        if project_id:
+            queryset = queryset.filter(project_id=project_id)
+        if column_id:
+            queryset = queryset.filter(column_id=column_id)
+        return queryset
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get('project')
         user = self.request.user
         if not project.users.filter(id=user.id).exists():
-            raise PermissionDenied("У вас немає доступу до цього проєктую.")
-
+            raise PermissionDenied("У вас немає доступу до цього проєкту.")
         serializer.save()
+
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
     queryset = Label.objects.all()
@@ -122,3 +129,4 @@ class ColumnViewSet(viewsets.ModelViewSet):
         if project_id:
             return Column.objects.filter(project_id=project_id).order_by('order')
         return super().get_queryset()
+
