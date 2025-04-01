@@ -9,11 +9,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Task, Label, Project, Comment, Column
 from .permissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, \
-    TokenObtainPairSerializer, ColumnSerializer, ProjectNestedSerializer
+    TokenObtainPairSerializer, ColumnSerializer, TaskNestedSerializer, ProjectNestedSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 from rest_framework import filters
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 # Creating a register view
@@ -72,11 +74,64 @@ class TaskViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
+        # Перевірка, чи поточний користувач має доступ до проекту
         project = serializer.validated_data.get('project')
         user = self.request.user
         if not project.users.filter(id=user.id).exists():
             raise PermissionDenied("У вас немає доступу до цього проєкту.")
-        serializer.save()
+        # Створення задачі
+        task = serializer.save()
+        # Надсилання повідомлення про створення задачі через WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{task.project.id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'task_created',
+                    'task': TaskNestedSerializer(task).data
+                }
+            }
+        )
+
+    def perform_update(self, serializer):
+        # Оновлення задачі
+        task = serializer.save()
+        # Перевірка доступу (за потреби, якщо get_queryset уже це робить, можна пропустити)
+        if not task.project.users.filter(id=self.request.user.id).exists():
+            raise PermissionDenied("У вас немає доступу до цього проєкту.")
+        # Надсилання повідомлення про оновлення задачі
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{task.project.id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'task_updated',
+                    'task': TaskNestedSerializer(task).data
+                }
+            }
+        )
+
+    def perform_destroy(self, instance):
+        # Перевірка доступу перед видаленням
+        if not instance.project.users.filter(id=self.request.user.id).exists():
+            raise PermissionDenied("У вас немає доступу до цього проєкту.")
+        project_id = instance.project.id
+        task_id = instance.id
+        instance.delete()
+        # Надсилання повідомлення про видалення задачі
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project_id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'task_deleted',
+                    'task_id': task_id,
+                }
+            }
+        )
 
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
