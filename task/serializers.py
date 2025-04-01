@@ -65,7 +65,8 @@ class CommentSerializer(serializers.ModelSerializer):
 class TaskNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ('id', 'title')
+        fields = ('id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
+                  'assigned_to', 'labels', 'project', 'column')
 
 
 class ColumnNestedSerializer(serializers.ModelSerializer):
