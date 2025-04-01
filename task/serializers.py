@@ -60,3 +60,27 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = '__all__'
+
+
+class TaskNestedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ('id', 'title')
+
+
+class ColumnNestedSerializer(serializers.ModelSerializer):
+    tasks = TaskNestedSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Column
+        fields = ('id', 'name', 'order', 'tasks')
+
+
+class ProjectNestedSerializer(serializers.ModelSerializer):
+    columns = ColumnNestedSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Project
+        fields = ('id', 'name', 'description', 'columns')
+
+

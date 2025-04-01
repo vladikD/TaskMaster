@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Task, Label, Project, Comment, Column
 from .permissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, \
-    TokenObtainPairSerializer, ColumnSerializer
+    TokenObtainPairSerializer, ColumnSerializer, ProjectNestedSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
@@ -109,6 +109,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsMemberOfProject]
 
     def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Comment.objects.none()
         return Comment.objects.filter(task__project__users=self.request.user)
 
     def perform_create(self, serializer):
@@ -129,4 +131,10 @@ class ColumnViewSet(viewsets.ModelViewSet):
         if project_id:
             return Column.objects.filter(project_id=project_id).order_by('order')
         return super().get_queryset()
+
+
+class ProjectDetailNestedView(generics.RetrieveAPIView):
+    queryset = Project.objects.all()
+    serializer_class = ProjectNestedSerializer
+    permission_classes = [IsAuthenticated]
 
