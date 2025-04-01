@@ -30,7 +30,7 @@ class Task(models.Model):
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     labels = models.ManyToManyField('Label', related_name='tasks', blank=True)
     project = models.ForeignKey('Project', related_name='tasks', on_delete=models.CASCADE)
-    column = models.ForeignKey("task.Column", on_delete=models.CASCADE, related_name='tasks', null=True, blank=True)
+    column = models.ForeignKey("task.Column", on_delete=models.CASCADE, related_name='tasks')
 
     class Meta:
         indexes = [
