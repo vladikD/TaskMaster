@@ -1,9 +1,8 @@
 from channels.generic.websocket import JsonWebsocketConsumer
 from asgiref.sync import async_to_sync
 from django.core.exceptions import ObjectDoesNotExist
-from task.models import Project, Task
+from task.models import Project, Task, Column
 from task.serializers import TaskNestedSerializer
-
 
 class ProjectConsumer(JsonWebsocketConsumer):
     def connect(self):
@@ -30,8 +29,6 @@ class ProjectConsumer(JsonWebsocketConsumer):
             )
 
     def receive_json(self, content, **kwargs):
-        # Цей метод обробляє вхідні повідомлення від клієнтів, наприклад, для переміщення задач
-        # Ми можемо використовувати його, якщо фронтенд надсилає повідомлення, яке потребує оновлення
         action = content.get('action')
         if action == "move_task":
             task_id = content.get('task_id')
@@ -46,20 +43,42 @@ class ProjectConsumer(JsonWebsocketConsumer):
                 }
             except Task.DoesNotExist:
                 response = {"error": "Task not found or not part of this project"}
+            message_type = "task_update"
+        elif action == "move_column":
+            column_id = content.get('column_id')
+            new_order = content.get('new_order')
+            try:
+                column = Column.objects.get(pk=column_id, project_id=self.project_id)
+                column.order = new_order
+                column.save()
+                response = {
+                    "action": "column_moved",
+                    "column": {
+                        "id": column.id,
+                        "name": column.name,
+                        "order": column.order,
+                    }
+                }
+            except Column.DoesNotExist:
+                response = {"error": "Column not found or not part of this project"}
+            message_type = "column_update"
         else:
             response = content
+            message_type = "task_update"  # За замовчуванням, або можна визначити окремий тип
 
         async_to_sync(self.channel_layer.group_send)(
             self.group_name,
             {
-                'type': 'task_update',
-                'message': response,
+                "type": message_type,
+                "message": response,
             }
         )
 
     def task_update(self, event):
         self.send_json(event['message'])
 
-    def comment_update(self, event):
+    def column_update(self, event):
         self.send_json(event['message'])
 
+    def comment_update(self, event):
+        self.send_json(event['message'])
