@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Task, Label, Project, Comment, Column
 from .permissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, \
-    TokenObtainPairSerializer, ColumnSerializer, TaskNestedSerializer, ProjectNestedSerializer
+    TokenObtainPairSerializer, ColumnSerializer, TaskNestedSerializer, ProjectNestedSerializer, CommentNestedSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
@@ -169,10 +169,55 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Comment.objects.filter(task__project__users=self.request.user)
 
     def perform_create(self, serializer):
+        # Перевірка доступу: переконайтеся, що поточний користувач має доступ до задачі, до якої додається коментар
         task = serializer.validated_data.get('task')
         if not task.project.users.filter(id=self.request.user.id).exists():
-            raise PermissionDenied("Ви не маєте доступу до завдань цього проєкту.")
-        serializer.save()
+            raise PermissionDenied("Ви не маєте доступу до цього проєкту.")
+        # Автоматично додамо користувача як автора коментаря
+        comment = serializer.save(user=self.request.user)
+
+        # Надсилання повідомлення через WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{comment.task.project.id}',  # група для проекту
+            {
+                'type': 'comment_update',
+                'message': {
+                    'action': 'comment_created',
+                    'comment': CommentNestedSerializer(comment).data,
+                }
+            }
+        )
+
+    def perform_update(self, serializer):
+        comment = serializer.save()
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{comment.task.project.id}',
+            {
+                'type': 'comment_update',
+                'message': {
+                    'action': 'comment_updated',
+                    'comment': CommentNestedSerializer(comment).data,
+                }
+            }
+        )
+
+    def perform_destroy(self, instance):
+        project_id = instance.task.project.id
+        comment_id = instance.id
+        instance.delete()
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project_id}',
+            {
+                'type': 'comment_update',
+                'message': {
+                    'action': 'comment_deleted',
+                    'comment_id': comment_id,
+                }
+            }
+        )
 
 
 class ColumnViewSet(viewsets.ModelViewSet):

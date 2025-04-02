@@ -60,17 +60,29 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = '__all__'
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+class CommentNestedSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username')
+
+    class Meta:
+        model = Comment
+        fields = ('id', 'text', 'user', 'created_at')
 
 
 class TaskNestedSerializer(serializers.ModelSerializer):
+    comments = CommentNestedSerializer(many=True, read_only=True)
     class Meta:
         model = Task
         fields = ('id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
-                  'assigned_to', 'labels', 'project', 'column')
+                  'assigned_to', 'labels', 'project', 'column', 'comments')
 
 
 class ColumnNestedSerializer(serializers.ModelSerializer):
     tasks = TaskNestedSerializer(many=True, read_only=True)
+
 
     class Meta:
         model = Column
