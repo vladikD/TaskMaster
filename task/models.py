@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 from django.db import models
 from django.contrib.auth.models import User
@@ -31,6 +33,16 @@ class Task(models.Model):
     labels = models.ManyToManyField('Label', related_name='tasks', blank=True)
     project = models.ForeignKey('Project', related_name='tasks', on_delete=models.CASCADE)
     column = models.ForeignKey("task.Column", on_delete=models.CASCADE, related_name='tasks')
+
+    estimated_time = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="Очікувана тривалість завдання (наприклад, PT1H30M для 1 години 30 хвилин)"
+    )
+    time_spent = models.DurationField(
+        default=timedelta(0),
+        help_text="Фактично витрачений час"
+    )
 
     class Meta:
         indexes = [

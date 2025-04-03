@@ -77,7 +77,7 @@ class TaskNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ('id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
-                  'assigned_to', 'labels', 'project', 'column', 'comments')
+                  'assigned_to', 'labels', 'project', 'column', 'comments','estimated_time', 'time_spent')
 
 
 class ColumnNestedSerializer(serializers.ModelSerializer):
