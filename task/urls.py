@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TaskViewSet, LabelViewSet, ProjectViewSet, CommentViewSet, RegisterView, ObtainTokenView, \
-    ProjectDetailNestedView, ColumnViewSet
+    ProjectDetailNestedView, ColumnViewSet, InvitationCreateView, InvitationAcceptView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -20,6 +20,9 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', ObtainTokenView.as_view(), name='login'),
     path('auth/', include('social_django.urls', namespace='social')),
+
+    path('invitations/create/', InvitationCreateView.as_view(), name='invitation-create'),
+    path('invitations/accept/', InvitationAcceptView.as_view(), name='invitation-accept'),
 
     path('project/<int:pk>/full/', ProjectDetailNestedView.as_view(), name='project-detail-nested'),
 

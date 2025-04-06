@@ -1,8 +1,9 @@
+import uuid
 from datetime import timedelta
 
 from django.db import models
-from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 # Model for labels
@@ -70,3 +71,22 @@ class Comment(models.Model):
 
     def __str__(self):
         return f'{self.user.username} on {self.task.title}'
+
+
+class Invitation(models.Model):
+    email = models.EmailField()
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='invitations')
+    token = models.CharField(max_length=64, unique=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4().hex
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Invitation for {self.email} to project {self.project.name}"

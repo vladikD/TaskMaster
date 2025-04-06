@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import Task, Label, Project, Comment, Column
+from .models import Task, Label, Project, Comment, Column, Invitation
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -97,3 +97,8 @@ class ProjectNestedSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'description', 'columns')
 
 
+class InvitationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invitation
+        fields = ['id', 'email', 'project', 'token', 'expires_at', 'accepted']
+        read_only_fields = ['token', 'expires_at', 'accepted']
