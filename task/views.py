@@ -6,6 +6,9 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.mail import send_mail
+
+from TaskMaster import settings
 from .models import Task, Label, Project, Comment, Column, Invitation
 from .permissions import IsMemberOfProject
 from .serializers import TaskSerializer, LabelSerializer, ProjectSerializer, CommentSerializer, UserSerializer, \
@@ -248,27 +251,21 @@ class InvitationCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # Припустимо, що тільки менеджер проекту може надсилати запрошення.
-        # Якщо у вас немає окремої логіки ролей, можна перевіряти, чи є користувач власником (наприклад, той, хто створив проект).
         project_id = request.data.get('project')
         try:
             project = Project.objects.get(pk=project_id)
         except Project.DoesNotExist:
             return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Тут можна додати перевірку, чи є користувач менеджером проекту.
-        # Наприклад, якщо project.manager == request.user (якщо ви додаєте поле manager) або інша логіка.
-        # Для простоти припустимо, що автор запрошення має право.
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             invitation = serializer.save()
             # Формуємо URL для прийняття запрошення
             accept_url = f"{request.scheme}://{request.get_host()}/invitations/accept/?token={invitation.token}"
-            # Відправляємо email із запрошенням (переконайтеся, що налаштовано EMAIL_BACKEND і відповідні параметри)
             send_mail(
                 subject=f"Запрошення до проекту {project.name}",
-                message=f"Вас запрошують приєднатися до проекту {project.name}. Прийміть запрошення за посиланням: {accept_url}",
+                message=f"Вас запрошують приєднатися до проекту {project.name}.\n Прийміть запрошення за посиланням: {accept_url}.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[invitation.email],
                 fail_silently=False,
@@ -292,11 +289,9 @@ class InvitationAcceptView(APIView):
         except Invitation.DoesNotExist:
             return Response({"error": "Invalid or expired invitation token."}, status=400)
 
-        # Перевірка, чи не прострочене запрошення
         if invitation.expires_at < timezone.now():
             return Response({"error": "Invitation token has expired."}, status=400)
 
-        # Якщо користувач авторизований, додаємо його до проекту
         if request.user.is_authenticated:
             project = invitation.project
             project.users.add(request.user)
@@ -304,7 +299,5 @@ class InvitationAcceptView(APIView):
             invitation.save()
             return Response({"message": "You have been added to the project."}, status=200)
         else:
-            # Якщо користувач не авторизований, перенаправляємо його на сторінку логіну з параметром next,
-            # щоб після авторизації запит міг обробити токен
             login_url = f"/login/?next=/invitations/accept/?token={token}"
             return redirect(login_url)
