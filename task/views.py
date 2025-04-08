@@ -231,6 +231,56 @@ class ProjectViewSet(viewsets.ModelViewSet):
         user = self.request.user
         project.users.add(user)
 
+    @action(detail=True, methods=['post'], url_path='add-user')
+    def add_user(self, request, pk=None):
+        """
+        Додає користувача до проекту.
+        Очікуваний JSON-телo:
+        {
+           "user_id": <ID користувача>
+        }
+        URL: POST /api/projects/<project_id>/add-user/
+        """
+        project = self.get_object()
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({"error": "User ID is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_to_add = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Перевірка: якщо користувач вже доданий, можна повернути відповідь
+        if project.users.filter(pk=user_to_add.pk).exists():
+            return Response({"message": f"User {user_to_add.username} is already added."},
+                            status=status.HTTP_200_OK)
+
+        # Додаємо користувача до проекту
+        project.users.add(user_to_add)
+        return Response({"message": f"User {user_to_add.username} added to project."},
+                        status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['delete'], url_path='remove-user/(?P<user_id>[^/.]+)')
+    def remove_user(self, request, pk=None, user_id=None):
+        print(f"Видаляємо користувача {user_id} з проекту {pk}")
+        project = self.get_object()
+        try:
+            user_to_remove = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        project.users.remove(user_to_remove)
+        tasks_to_update = project.tasks.filter(assigned_to=user_to_remove)
+        for task in tasks_to_update:
+            task.assigned_to = None
+            task.save()
+
+        return Response({"message": f"User {user_to_remove.username} removed from project and unassigned from tasks."},
+                        status=status.HTTP_200_OK)
+
+
 # ViewSets for Comment
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
