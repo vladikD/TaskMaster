@@ -140,6 +140,73 @@ class TaskViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @action(detail=True, methods=['patch'], url_path='assign')
+    def assign_user(self, request, pk=None):
+        """
+        Призначає користувача до задачі. URL: PATCH /api/tasks/<task_id>/assign/
+        Очікуваний JSON:
+        {
+            "user_id": <ID користувача>
+        }
+        """
+        task = self.get_object()
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({"error": "User id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user_to_assign = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Перевірка: користувач повинен бути учасником цього проекту
+        if not task.project.users.filter(pk=user_to_assign.pk).exists():
+            return Response({"error": "User does not belong to the project."}, status=status.HTTP_400_BAD_REQUEST)
+
+        task.assigned_to = user_to_assign
+        task.save()
+
+        # Надсилання push-оновлення через WebSocket (якщо потрібно)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{task.project.id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'user_assigned',
+                    'task': TaskNestedSerializer(task).data,
+                }
+            }
+        )
+
+        return Response({"message": "User assigned to task successfully."}, status=status.HTTP_200_OK)
+
+
+    @action(detail=True, methods=['delete'], url_path='unassign')
+    def unassign(self, request, pk=None):
+        """
+        Видаляє користувача із задачі шляхом відміни призначення (assigned_to стає None).
+        URL: DELETE /api/tasks/<task_id>/unassign/
+        """
+        task = self.get_object()
+        # Переконаємося, що поточний користувач має доступ до цієї задачі
+        if not task.project.users.filter(id=request.user.id).exists():
+            raise PermissionDenied("У вас немає доступу до цього проєкту.")
+
+        task.assigned_to = None
+        task.save()
+
+        # Надсилання push-повідомлення через WebSocket про зміну завдання
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{task.project.id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'task_unassigned',
+                    'task': TaskNestedSerializer(task).data,
+                }
+            }
+        )
+        return Response({"message": "User unassigned from task."}, status=status.HTTP_200_OK)
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
     queryset = Label.objects.all()
