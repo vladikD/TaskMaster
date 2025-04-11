@@ -25,7 +25,8 @@ Task Manager – це веб-додаток для управління завд
    venv\Scripts\activate  # Для Windows
 
 3. Встановити залежності:
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
 
 4. Налаштувати файл .env із відповідними налаштуваннями, наприклад, SECRET_KEY, налаштування бази даних тощо.
 
