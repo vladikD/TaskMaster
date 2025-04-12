@@ -31,8 +31,9 @@ Task Manager – це веб-додаток для управління завд
 4. Налаштувати файл .env із відповідними налаштуваннями, наприклад, SECRET_KEY, налаштування бази даних тощо.
 
 5. Застосувати міграції:
-python manage.py makemigrations
-python manage.py migrate
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
 6.  Запустити сервер:
 python manage.py runserver
 
