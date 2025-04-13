@@ -22,6 +22,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 from django.shortcuts import redirect
+import datetime
 
 
 
@@ -139,6 +140,49 @@ class TaskViewSet(viewsets.ModelViewSet):
                 }
             }
         )
+
+    @action(detail=True, methods=['patch'], url_path='set-deadline')
+    def set_deadline(self, request, pk=None):
+        """
+        Встановлює або оновлює дедлайн (due_date) для задачі.
+        Очікуваний JSON:
+        {
+            "due_date": "2025-04-10T12:00:00Z"
+        }
+        URL: PATCH /api/tasks/<task_id>/set-deadline/
+        """
+        task = self.get_object()
+        due_date_str = request.data.get('due_date')
+        if not due_date_str:
+            return Response({"error": "Due date is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Замінимо "Z" на "+00:00" для коректної обробки часу, якщо він присутній
+            new_deadline = datetime.datetime.fromisoformat(due_date_str.replace("Z", "+00:00"))
+        except Exception as e:
+            return Response({"error": "Invalid date format."}, status=status.HTTP_400_BAD_REQUEST)
+        now = timezone.now()
+        if new_deadline < now:
+            return Response({"error": "Due date must be in the future."}, status=status.HTTP_400_BAD_REQUEST)
+        task.due_date = new_deadline
+        task.save()
+
+        # Надсилання push-сповіщення через WebSocket про зміну дедлайну
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{task.project.id}',
+            {
+                'type': 'task_update',
+                'message': {
+                    'action': 'deadline_updated',
+                    'task': TaskNestedSerializer(task).data,
+                }
+            }
+        )
+        return Response(
+            {"message": "Deadline updated successfully.", "due_date": task.due_date},
+            status=status.HTTP_200_OK
+        )
+
 
     @action(detail=True, methods=['patch'], url_path='assign')
     def assign_user(self, request, pk=None):
