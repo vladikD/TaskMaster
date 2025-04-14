@@ -2,7 +2,7 @@ from channels.generic.websocket import JsonWebsocketConsumer
 from asgiref.sync import async_to_sync
 from django.core.exceptions import ObjectDoesNotExist
 from task.models import Project, Task, Column
-from task.serializers import TaskNestedSerializer
+from task.serializers import TaskNestedSerializer, ColumnSerializer
 
 class ProjectConsumer(JsonWebsocketConsumer):
     def connect(self):
@@ -44,6 +44,7 @@ class ProjectConsumer(JsonWebsocketConsumer):
             except Task.DoesNotExist:
                 response = {"error": "Task not found or not part of this project"}
             message_type = "task_update"
+
         elif action == "move_column":
             column_id = content.get('column_id')
             new_order = content.get('new_order')
@@ -62,9 +63,34 @@ class ProjectConsumer(JsonWebsocketConsumer):
             except Column.DoesNotExist:
                 response = {"error": "Column not found or not part of this project"}
             message_type = "column_update"
+
+        elif action == "add_column":
+            # Реалізація додавання нової колонки через WebSocket
+            column_name = content.get('column_name')
+            try:
+                # 'order' можна передавати як опціональний параметр; якщо не передано, за замовчуванням встановлюємо 0
+                order = content.get('order', 0)
+                # Створюємо колонку для проекту, до якого підключено WebSocket
+                column = Column.objects.create(
+                    project_id=self.project_id,
+                    name=column_name,
+                    order=order
+                )
+                response = {
+                    "action": "column_added",
+                    "column": {
+                        "id": column.id,
+                        "name": column.name,
+                        "order": column.order,
+                    }
+                }
+            except Exception as e:
+                response = {"error": str(e)}
+            message_type = "column_update"
+
         else:
             response = content
-            message_type = "task_update"  # За замовчуванням, або можна визначити окремий тип
+            message_type = "task_update"  # За замовчуванням або можна визначити інший тип
 
         async_to_sync(self.channel_layer.group_send)(
             self.group_name,
