@@ -52,13 +52,19 @@ class ProjectConsumer(JsonWebsocketConsumer):
                 column = Column.objects.get(pk=column_id, project_id=self.project_id)
                 column.order = new_order
                 column.save()
+
+                # Отримуємо всі колонки для даного проекту, відсортовані за поточними order (і id, щоб уникнути плутанини)
+                columns = list(Column.objects.filter(project_id=self.project_id).order_by('order', 'id'))
+                # Перенумеруємо колонки послідовно, починаючи з 1
+                for idx, col in enumerate(columns, start=1):
+                    if col.order != idx:
+                        col.order = idx
+                        col.save()
+
                 response = {
                     "action": "column_moved",
-                    "column": {
-                        "id": column.id,
-                        "name": column.name,
-                        "order": column.order,
-                    }
+                    # Ми повертаємо оновлений список колон, щоб фронтенд міг одразу відобразити нову послідовність
+                    "columns": [ColumnSerializer(col).data for col in columns]
                 }
             except Column.DoesNotExist:
                 response = {"error": "Column not found or not part of this project"}
