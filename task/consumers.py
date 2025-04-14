@@ -47,28 +47,40 @@ class ProjectConsumer(JsonWebsocketConsumer):
 
         elif action == "move_column":
             column_id = content.get('column_id')
-            new_order = content.get('new_order')
+            new_order = int(content.get('new_order', 1))
             try:
-                column = Column.objects.get(pk=column_id, project_id=self.project_id)
-                column.order = new_order
-                column.save()
+                # Знаходимо колонку, яку переміщуємо.
+                moved_column = Column.objects.get(pk=column_id, project_id=self.project_id)
 
-                # Отримуємо всі колонки для даного проекту, відсортовані за поточними order (і id, щоб уникнути плутанини)
-                columns = list(Column.objects.filter(project_id=self.project_id).order_by('order', 'id'))
-                # Перенумеруємо колонки послідовно, починаючи з 1
-                for idx, col in enumerate(columns, start=1):
+                # Отримуємо всі інші колонки проекту, за замовчуванням відсортовані за order та id.
+                other_columns = list(
+                    Column.objects.filter(project_id=self.project_id).exclude(pk=column_id).order_by('order', 'id'))
+
+                # Коригуємо new_order, щоб воно було в діапазоні 1 .. (кількість колон + 1)
+                if new_order < 1:
+                    new_order = 1
+                elif new_order > len(other_columns) + 1:
+                    new_order = len(other_columns) + 1
+
+                # Вставляємо переміщувану колонку у список у потрібну позицію
+                # Наприклад, якщо new_order==1, колонку вставляємо на початок списку.
+                new_columns = other_columns[:new_order - 1] + [moved_column] + other_columns[new_order - 1:]
+
+                # Перенумеровуємо колонки: призначаємо послідовні значення order, починаючи з 1.
+                for idx, col in enumerate(new_columns, start=1):
                     if col.order != idx:
                         col.order = idx
                         col.save()
 
+                # Формуємо відповідь з оновленим списком колон
                 response = {
                     "action": "column_moved",
-                    # Ми повертаємо оновлений список колон, щоб фронтенд міг одразу відобразити нову послідовність
-                    "columns": [ColumnSerializer(col).data for col in columns]
+                    "columns": [ColumnSerializer(col).data for col in new_columns]
                 }
             except Column.DoesNotExist:
                 response = {"error": "Column not found or not part of this project"}
             message_type = "column_update"
+
 
         elif action == "add_column":
             # Реалізація додавання нової колонки через WebSocket
