@@ -126,3 +126,6 @@ class ProjectConsumer(JsonWebsocketConsumer):
 
     def comment_update(self, event):
         self.send_json(event['message'])
+
+    def project_update(self, event):
+        self.send_json(event['message'])

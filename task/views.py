@@ -259,6 +259,7 @@ class LabelViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Label.objects.filter(tasks__project__users=self.request.user).distinct()
+        #return Label.objects.all()
 
 # ViewSets for Project
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -323,6 +324,47 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return Response({"message": f"User {user_to_remove.username} removed from project and unassigned from tasks."},
                         status=status.HTTP_200_OK)
+
+
+    @action(detail=True, methods=['patch'], url_path='update-info')
+    def update_info(self, request, pk=None):
+        """
+        Оновлює назву та опис проекту.
+        Очікуваний JSON:
+        {
+            "name": "Новий заголовок",
+            "description": "Новий опис"
+        }
+        URL: PATCH /api/projects/<project_id>/update-info/
+        """
+        project = self.get_object()
+        new_name = request.data.get('name')
+        new_description = request.data.get('description')
+
+        if new_name is not None:
+            project.name = new_name
+        if new_description is not None:
+            project.description = new_description
+
+        project.save()
+
+        # Надсилання push-оновлення через WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'project_{project.id}',
+            {
+                'type': 'project_update',
+                'message': {
+                    'action': 'project_updated',
+                    'project': ProjectSerializer(project).data
+                }
+            }
+        )
+
+        return Response({
+            "message": "Project updated successfully.",
+            "project": ProjectSerializer(project).data
+        }, status=status.HTTP_200_OK)
 
 
 # ViewSets for Comment
