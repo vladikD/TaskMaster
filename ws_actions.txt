@@ -1,0 +1,61 @@
+To connect to WebSocket you need:
+Run the project with this console command  - uvicorn TaskMaster.asgi:application --reload
+And in a terminal on your computer, run Redis with this command(if you use MacOs) - brew services start redis
+
+
+--------------WS Tasks--------------
+Create Task:
+Url - POST http://127.0.0.1:8000/api/tasks/
+JSON - {
+    "title": "Your title",
+    "description": "Your description",
+    "due_date": "2025-05-25T12:00:00Z",
+    "project": 3,
+    "column": 1,
+    "estimated_time": null,
+    "time_spent": "00:00:00"
+}
+
+Update Task:
+Url - PATCH http://127.0.0.1:8000/api/tasks/<task_id>/
+JSON - {
+    "title": "New title"
+}
+
+Delete Task:
+Url - DELETE http://127.0.0.1:8000/api/tasks/<task_id>/
+
+Set/Update Task deadline:
+Url - PATCH http://127.0.0.1:8000/api/tasks/<task_id>/set-deadline/
+JSON - {
+    "due_date": "2025-05-26T12:00:00Z"
+}
+
+Assign User to the Task:
+Url - PATCH http://127.0.0.1:8000/api/tasks/<task_id>/assign/
+JSON - {
+    "user_id": 4
+}
+
+Unassign User from the Task:
+Url - DELETE http://127.0.0.1:8000/api/tasks/<task_id>/unassign/
+
+
+--------------WS Projects--------------
+
+Add User to the Project:
+Url - POST http://127.0.0.1:8000/api/projects/<project_id>/add-user/
+JSON - {
+    "user_id": 1
+}
+
+
+Remove User from the Project:
+Url - DELETE http://127.0.0.1:8000/api/projects/<project_id>/remove-user/<user_id>/
+
+
+Update Project Info:
+Url - PATCH http://127.0.0.1:8000/api/projects/<project_id>/update-info/
+JSON - {
+    "name": "New Project Name"
+}

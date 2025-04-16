@@ -39,9 +39,6 @@ Task Manager – це веб-додаток для управління завд
    ```bash
    python manage.py runserver
 
-7.  Запустити сервер з можливістю WebSocket зʼєднання:
-   ```bash
-   uvicorn TaskMaster.asgi:application --reload
    
 
 
