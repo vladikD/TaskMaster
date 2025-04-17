@@ -42,6 +42,10 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
                   'assigned_to', 'labels', 'project', 'column']
+        extra_kwargs = {
+            'title': {'required': True},
+            'description': {'required': True},
+        }
 
 # Serializer for Labels
 class LabelSerializer(serializers.ModelSerializer):
@@ -54,6 +58,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'name', 'description', 'users']
+        extra_kwargs = {
+            'name': {'required': True},
+            'description': {'required': True},
+        }
 
 # Serializer for Comments
 class CommentSerializer(serializers.ModelSerializer):
@@ -95,6 +103,7 @@ class ProjectNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ('id', 'name', 'description', 'columns')
+
 
 
 class InvitationSerializer(serializers.ModelSerializer):
