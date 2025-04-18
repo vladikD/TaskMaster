@@ -9,6 +9,11 @@ class ColumnSerializer(serializers.ModelSerializer):
     class Meta:
         model = Column
         fields = ['id', 'name', 'project', 'order']
+        extra_kwargs = {
+            'name': {'required': True},
+            'project': {'required': True},
+            'order': {'required': True},
+        }
 
 
 class UserSerializer(serializers.ModelSerializer):
