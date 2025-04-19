@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+
+from celery.schedules import crontab
 from decouple import config
 from datetime import timedelta
 
@@ -47,6 +49,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'drf_yasg',
+    'django_celery_beat',
+
 
 ]
 
@@ -215,4 +219,16 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+
+# Redis як брокер та бекенд результатів
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/0')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://127.0.0.1:6379/0')
+
+CELERY_BEAT_SCHEDULE = {
+    # щодня о 9:00 відправляємо нагадування по задачах, дедлайн яких завтра
+    'send-deadline-reminders-every-morning': {
+        'task': 'task.tasks.send_deadline_reminders',
+        'schedule': crontab(hour=9, minute=0),
+    },
+}
 
