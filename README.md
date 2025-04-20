@@ -37,7 +37,10 @@ Task Manager – це веб-додаток для управління завд
    
 6.  Запустити сервер:
    ```bash
-   python manage.py runserver
+   python manage.py runserver 
+   uvicorn TaskMaster.asgi:application --reload - для WebSocket
+   brew services start redis - цю команду потрібно виконати в терміналі (для цього потрібно мати встановленим Redis)
+
 
    
 
