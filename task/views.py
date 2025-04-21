@@ -27,15 +27,32 @@ import datetime
 
 
 # Creating a register view
+# class RegisterView(APIView):
+#     permission_classes = [AllowAny]
+#
+#     def post(self, request):
+#         serializer = UserSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({'message': 'User created successfully!'}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# task/views.py
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'User created successfully!'}, status=status.HTTP_201_CREATED)
+            # При створенні UserSerializer.create повертає інстанс користувача
+            user = serializer.save()
+            return Response({
+                'message': 'User created successfully!',
+                'user_id': user.id
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ObtainTokenView(APIView):
     permission_classes = [AllowAny]
