@@ -48,6 +48,26 @@ class ObtainTokenView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+       Лише GET /api/users/ та GET /api/users/{id}/
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['get'], url_path='tasks')
+    def tasks(self, request, pk=None):
+        """
+        GET /api/users/{user_id}/tasks/
+        Повертає всі задачі, де assigned_to = цей user_id.
+        """
+        user = self.get_object()
+        qs = Task.objects.filter(assigned_to=user)
+        serializer = TaskSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
 # Filter for TASK
 class TaskFilter(django_filters.FilterSet):
     is_complete = django_filters.BooleanFilter(field_name='is_complete')

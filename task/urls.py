@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import TaskViewSet, LabelViewSet, ProjectViewSet, CommentViewSet, RegisterView, ObtainTokenView, \
-    ProjectDetailNestedView, ColumnViewSet, InvitationCreateView, InvitationAcceptView
+    ProjectDetailNestedView, ColumnViewSet, InvitationCreateView, InvitationAcceptView, UserViewSet
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -14,6 +14,7 @@ router.register(r'labels', LabelViewSet)
 router.register(r'projects', ProjectViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'columns', ColumnViewSet)
+router.register(r'users', UserViewSet, basename='user')
 
 project_add_user = ProjectViewSet.as_view({
     'post': 'add_user'
