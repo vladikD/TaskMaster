@@ -37,14 +37,18 @@ class RegisterView(APIView):
             return Response({'message': 'User created successfully!'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# Creating a obtain token view
 class ObtainTokenView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = TokenObtainPairSerializer(data=request.data)
         if serializer.is_valid():
-            return Response(serializer.validated_data)
+            tokens = serializer.validated_data
+            return Response({
+                'refresh': tokens['refresh'],
+                'access': tokens['access'],
+                'user_id': serializer.user.id,
+            })
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
