@@ -366,6 +366,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "project": ProjectSerializer(project).data
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'], url_path='users', permission_classes=[IsAuthenticated])
+    def list_users(self, request, pk=None):
+        """
+        GET /api/projects/{project_id}/users/
+        Повертає список користувачів, які належать до цього проекту.
+        """
+        project = self.get_object()
+        users = project.users.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
+
 
 # ViewSets for Comment
 class CommentViewSet(viewsets.ModelViewSet):
