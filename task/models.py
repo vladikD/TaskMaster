@@ -34,6 +34,7 @@ class Task(models.Model):
     labels = models.ManyToManyField('Label', related_name='tasks', blank=True)
     project = models.ForeignKey('Project', related_name='tasks', on_delete=models.CASCADE)
     column = models.ForeignKey("task.Column", on_delete=models.CASCADE, related_name='tasks')
+    order = models.PositiveIntegerField(default=0)
 
     estimated_time = models.DurationField(
         null=True,
@@ -46,9 +47,10 @@ class Task(models.Model):
     )
 
     class Meta:
+        ordering = ['order']
         indexes = [
-        models.Index(fields=['due_date']),
-        models.Index(fields=['assigned_to']),
+        models.Index(fields=['due_date', 'assigned_to']),
+        models.Index(fields=['column', 'order']),
     ]
 
     def __str__(self):
