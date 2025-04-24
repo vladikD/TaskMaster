@@ -52,7 +52,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ['id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
-                  'assigned_to', 'labels', 'project', 'column']
+                  'assigned_to', 'labels', 'project', 'column', 'order']
         extra_kwargs = {
             'title': {'required': True},
             'description': {'required': True},
@@ -96,7 +96,16 @@ class TaskNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ('id', 'title', 'description', 'created_at', 'due_date', 'is_complete',
-                  'assigned_to', 'labels', 'project', 'column', 'comments','estimated_time', 'time_spent')
+                  'assigned_to', 'labels', 'project', 'column', 'comments','estimated_time', 'time_spent','order')
+
+
+class TaskOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Task
+        fields = ('id', 'order')
+
+
+
 
 
 class ColumnNestedSerializer(serializers.ModelSerializer):
