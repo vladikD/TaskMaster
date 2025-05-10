@@ -58,6 +58,11 @@ class TaskSerializer(serializers.ModelSerializer):
             'description': {'required': True},
         }
 
+class TaskOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ('id', 'order')
+
 # Serializer for Labels
 class LabelSerializer(serializers.ModelSerializer):
     class Meta:
