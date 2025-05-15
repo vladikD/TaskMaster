@@ -248,23 +248,42 @@ class TaskViewSet(viewsets.ModelViewSet):
         )
 
         if user_to_assign.email:
-            subject = f"Вас призначили до задачі «{task.title}»"
-            message = (
+            subject = f"🎉 Ви призначені на задачу «{task.title}»"
+            text_message = (
                 f"Привіт, {user_to_assign.username}!\n\n"
-                f"Вас призначили виконувати задачу «{task.title}»\n"
-                f"в проекті «{task.project.name}».\n\n"
-                f"Деталі: http://{request.get_host()}/project/{task.project.id}/full/\n\n"
-                "Успіхів!"
+                f"Вас щойно призначили на задачу «{task.title}» у проекті «{task.project.name}».\n"
+                f"Подивіться всі деталі тут:\n"
+                f"{request.scheme}://{request.get_host()}/project/{task.project.id}/full/\n\n"
+                "Успіхів у виконанні! 🚀"
             )
+            html_message = f"""
+                        <html>
+                          <body style="font-family: sans-serif; line-height:1.5;">
+                            <h2 style="color:#2F4F4F;">Привіт, {user_to_assign.username}!</h2>
+                            <p>🎉 <strong>Вас призначили</strong> на задачу 
+                               <em>«{task.title}»</em> у проекті 
+                               <strong>«{task.project.name}»</strong>.</p>
+                            <p>Деталі задачі можна побачити за посиланням:</p>
+                            <p>
+                              <a href="{request.scheme}://{request.get_host()}/project/{task.project.id}/full/"
+                                 style="color:#1E90FF; text-decoration:none;">
+                                Перейти до проекту
+                              </a>
+                            </p>
+                            <hr>
+                            <p>Бажаємо продуктивної роботи!</p>
+                          </body>
+                        </html>
+                    """
             send_mail(
                 subject,
-                message,
+                text_message,
                 settings.DEFAULT_FROM_EMAIL,
                 [user_to_assign.email],
+                html_message=html_message,
                 fail_silently=True,
             )
-
-        return Response({"message": "User assigned to task successfully."}, status=status.HTTP_200_OK)
+        return Response({"message": "User assigned to task successfully."})
 
     @action(detail=True, methods=['delete'], url_path='unassign')
     def unassign(self, request, pk=None):
@@ -301,22 +320,36 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         # 5. Email-сповіщення колишньому виконавцю
         if user_to_notify and user_to_notify.email:
-            subject = f"Вас відмінено з задачі «{task.title}»"
-            message = (
+            subject = f"❌ Вас зняли із задачі «{task.title}»"
+            text_message = (
                 f"Привіт, {user_to_notify.username}!\n\n"
-                f"Ви більше не призначені на задачу «{task.title}»\n"
-                f"у проекті «{task.project.name}».\n\n"
-                "Якщо це сталося помилково — зверніться до менеджера проекту."
+                f"Вас щойно зняли з задачі «{task.title}» у проекті «{task.project.name}».\n\n"
+                "Якщо це помилка — зверніться до менеджера проекту."
             )
+            html_message = f"""
+                        <html>
+                          <body style="font-family: sans-serif; line-height:1.5;">
+                            <h2 style="color:#2F4F4F;">Привіт, {user_to_notify.username}!</h2>
+                            <p>❌ Вас зняли з задачі 
+                               <strong>«{task.title}»</strong> у проекті 
+                               <em>«{task.project.name}»</em>.</p>
+                            <p>Якщо ви вважаєте це помилкою — <a href="mailto:{settings.DEFAULT_FROM_EMAIL}"
+                               style="color:#1E90FF;">напишіть нам</a>.</p>
+                            <hr>
+                            <p>Дякуємо, що ви з нами!</p>
+                          </body>
+                        </html>
+                    """
             send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user_to_notify.email],
+                subject,
+                text_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user_to_notify.email],
+                html_message=html_message,
                 fail_silently=True,
             )
+        return Response({"message": "User unassigned from task."})
 
-        return Response({"message": "User unassigned from task."}, status=status.HTTP_200_OK)
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
     queryset = Label.objects.all()
