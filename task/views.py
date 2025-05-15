@@ -291,90 +291,100 @@ class LabelViewSet(viewsets.ModelViewSet):
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
-    permission_classes = [IsMemberOfProject]
+    permission_classes = [IsAuthenticated]  # або ваш IsMemberOfProject
 
     def get_queryset(self):
-        user = self.request.user
-        return Project.objects.filter(users=user)
+        return Project.objects.filter(users=self.request.user)
 
     def perform_create(self, serializer):
         project = serializer.save()
-        user = self.request.user
-        project.users.add(user)
+        project.users.add(self.request.user)
 
     @action(detail=True, methods=['post'], url_path='add-user')
     def add_user(self, request, pk=None):
-        """
-        Додає користувача до проекту.
-        Очікуваний JSON-телo:
-        {
-           "user_id": <ID користувача>
-        }
-        URL: POST /api/projects/<project_id>/add-user/
-        """
         project = self.get_object()
         user_id = request.data.get('user_id')
         if not user_id:
             return Response({"error": "User ID is required."},
                             status=status.HTTP_400_BAD_REQUEST)
+
         try:
             user_to_add = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found."},
                             status=status.HTTP_404_NOT_FOUND)
 
-        # Перевірка: якщо користувач вже доданий, можна повернути відповідь
         if project.users.filter(pk=user_to_add.pk).exists():
             return Response({"message": f"User {user_to_add.username} is already added."},
                             status=status.HTTP_200_OK)
 
-        # Додаємо користувача до проекту
         project.users.add(user_to_add)
-        return Response({"message": f"User {user_to_add.username} added to project."},
-                        status=status.HTTP_200_OK)
+
+        # — надсилаємо пошту про додавання —
+        accept_url = f"{request.scheme}://{request.get_host()}/project/{project.id}/full/"
+        send_mail(
+            subject=f"Вас додано до проєкту «{project.name}»",
+            message=(
+                f"Привіт, {user_to_add.username}!\n\n"
+                f"Вас щойно додали до проєкту «{project.name}».\n"
+                f"Переглянути можна за посиланням:\n{accept_url}"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user_to_add.email],
+            fail_silently=False,
+        )
+
+        return Response(
+            {"message": f"User {user_to_add.username} added and notified by email."},
+            status=status.HTTP_200_OK
+        )
 
     @action(detail=True, methods=['delete'], url_path='remove-user/(?P<user_id>[^/.]+)')
     def remove_user(self, request, pk=None, user_id=None):
-        print(f"Видаляємо користувача {user_id} з проекту {pk}")
         project = self.get_object()
         try:
             user_to_remove = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "User not found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
         project.users.remove(user_to_remove)
-        tasks_to_update = project.tasks.filter(assigned_to=user_to_remove)
-        for task in tasks_to_update:
+        # відв’язуємо від завдань
+        for task in project.tasks.filter(assigned_to=user_to_remove):
             task.assigned_to = None
             task.save()
 
-        return Response({"message": f"User {user_to_remove.username} removed from project and unassigned from tasks."},
-                        status=status.HTTP_200_OK)
+        # — надсилаємо пошту про видалення —
+        send_mail(
+            subject=f"Вас видалено з проєкту «{project.name}»",
+            message=(
+                f"Привіт, {user_to_remove.username}!\n\n"
+                f"Вас щойно видалили з проєкту «{project.name}».\n"
+                "Якщо це сталося помилково, зверніться до власника проєкту."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user_to_remove.email],
+            fail_silently=False,
+        )
 
+        return Response(
+            {"message": f"User {user_to_remove.username} removed and notified by email."},
+            status=status.HTTP_200_OK
+        )
 
     @action(detail=True, methods=['patch'], url_path='update-info')
     def update_info(self, request, pk=None):
-        """
-        Оновлює назву та опис проекту.
-        Очікуваний JSON:
-        {
-            "name": "Новий заголовок",
-            "description": "Новий опис"
-        }
-        URL: PATCH /api/projects/<project_id>/update-info/
-        """
         project = self.get_object()
-        new_name = request.data.get('name')
-        new_description = request.data.get('description')
+        name = request.data.get('name')
+        description = request.data.get('description')
 
-        if new_name is not None:
-            project.name = new_name
-        if new_description is not None:
-            project.description = new_description
-
+        if name is not None:
+            project.name = name
+        if description is not None:
+            project.description = description
         project.save()
 
-        # Надсилання push-оновлення через WebSocket
+        # пуш-оновлення через WebSocket
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'project_{project.id}',
@@ -394,10 +404,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='users', permission_classes=[IsAuthenticated])
     def list_users(self, request, pk=None):
-        """
-        GET /api/projects/{project_id}/users/
-        Повертає список користувачів, які належать до цього проекту.
-        """
         project = self.get_object()
         users = project.users.all()
         serializer = UserSerializer(users, many=True)
