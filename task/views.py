@@ -247,24 +247,46 @@ class TaskViewSet(viewsets.ModelViewSet):
             }
         )
 
-        return Response({"message": "User assigned to task successfully."}, status=status.HTTP_200_OK)
+        if user_to_assign.email:
+            subject = f"Вас призначили до задачі «{task.title}»"
+            message = (
+                f"Привіт, {user_to_assign.username}!\n\n"
+                f"Вас призначили виконувати задачу «{task.title}»\n"
+                f"в проекті «{task.project.name}».\n\n"
+                f"Деталі: http://{request.get_host()}/project/{task.project.id}/full/\n\n"
+                "Успіхів!"
+            )
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user_to_assign.email],
+                fail_silently=True,
+            )
 
+        return Response({"message": "User assigned to task successfully."}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['delete'], url_path='unassign')
     def unassign(self, request, pk=None):
         """
-        Видаляє користувача із задачі шляхом відміни призначення (assigned_to стає None).
+        Видаляє користувача із задачі (assigned_to = None),
+        надсилає оновлення через WebSocket і email колишньому виконавцю.
         URL: DELETE /api/tasks/<task_id>/unassign/
         """
         task = self.get_object()
-        # Переконаємося, що поточний користувач має доступ до цієї задачі
+
+        # 1. Перевірка доступу
         if not task.project.users.filter(id=request.user.id).exists():
             raise PermissionDenied("У вас немає доступу до цього проєкту.")
 
+        # 2. Зберігаємо, кому були призначені раніше
+        user_to_notify = task.assigned_to
+
+        # 3. Відʼєднуємо виконавця
         task.assigned_to = None
         task.save()
 
-        # Надсилання push-повідомлення через WebSocket про зміну завдання
+        # 4. Push-оновлення через WebSocket
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f'project_{task.project.id}',
@@ -272,10 +294,28 @@ class TaskViewSet(viewsets.ModelViewSet):
                 'type': 'task_update',
                 'message': {
                     'action': 'task_unassigned',
-                    'task': TaskNestedSerializer(task).data,
+                    'task': TaskNestedSerializer(task).data
                 }
             }
         )
+
+        # 5. Email-сповіщення колишньому виконавцю
+        if user_to_notify and user_to_notify.email:
+            subject = f"Вас відмінено з задачі «{task.title}»"
+            message = (
+                f"Привіт, {user_to_notify.username}!\n\n"
+                f"Ви більше не призначені на задачу «{task.title}»\n"
+                f"у проекті «{task.project.name}».\n\n"
+                "Якщо це сталося помилково — зверніться до менеджера проекту."
+            )
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user_to_notify.email],
+                fail_silently=True,
+            )
+
         return Response({"message": "User unassigned from task."}, status=status.HTTP_200_OK)
 # ViewSets for Label
 class LabelViewSet(viewsets.ModelViewSet):
